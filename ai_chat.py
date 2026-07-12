@@ -27,7 +27,7 @@ def ask_ai(messages):
 mode_prompts = MODE_PROMPTS
 while True:
     mode = input(MODE)
-    system_prompt = mode_prompts.get(mode)
+    mode_prompts.get(mode)
     if mode == "exit":
         print("程序已退出")
         break
@@ -57,7 +57,6 @@ while True:
         #progress指令：输出已学内容并且给出建议
         if q.startswith("/progress"):
             print("已累计学习：")
-            print("\n")
             learn_data = read(LEARN_RECORD_FILE)#读取
             if not learn_data:
                 print("暂无学习记录，无法生成")
@@ -67,10 +66,12 @@ while True:
                 f"-{item}" for item in learn_data
             )#拼接输出内容
             print(learn_memory)
-            user_content = f"{learn_memory},{DAILY_PATH}"#将输出内容喂给ai
-            messages.append({"role" : "user", "content" : user_content})
-            answer = ask_ai(messages)
-            messages.append({"role" : "assistant","content" : answer})#获取回复并且将回复加入messages列表中
+            user_content = DAILY_PATH.format(
+                learn_record = learn_memory
+            )#将输出内容喂给ai
+            temp_messages = messages.copy()
+            temp_messages.append({"role" : "user", "content" : user_content})
+            answer = ask_ai(temp_messages)
             #输出学习日报
             print("将为您生成学习日报")
             #确定文件名
