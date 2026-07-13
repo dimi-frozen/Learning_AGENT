@@ -50,9 +50,17 @@ while True:
 
         #/learn 指令：保存已学内容
         if q.startswith("/learn"):
+            parts = q.split(maxsplit=1)
+            if len(parts) < 2:
+                print("请输入要保存的内容，例如:/learn 内容")
+                continue
             learn_time = datetime.now().strftime("%Y%m%d")
-            learn_content = f"{learn_time}:{q.split()[1]}"
-            write(LEARN_RECORD_FILE,learn_content)
+            learn_content = parts[1]
+            learn_message = {
+                "datetime":learn_time,
+                "content":learn_content
+            }
+            write(LEARN_RECORD_FILE,learn_message)
             print("保存成功")
             continue
 
