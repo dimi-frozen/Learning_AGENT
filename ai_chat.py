@@ -2,8 +2,8 @@ import requests
 import os
 from file_utils import write, read ,save_text_file
 from datetime import datetime
-from config import API_KEY, BASE_URL, MODEL_NAME,LEARN_RECORD_FILE,REPORT_DIR
-from prompt import MODE_PROMPTS,MODE,DAILY_PATH
+from config import API_KEY, BASE_URL, MODEL_NAME,LEARN_RECORD_FILE,REPORT_DIR,PLAN_DIR
+from prompt import MODE_PROMPTS,MODE,DAILY_PATH,LEARNING_PLAN
 #requests 是 Python 最常用的第三方 HTTP 库，专门用来向服务器发送 GET/POST 请求。
 #调用大模型 API 的本质，就是向对方的服务器发送一段 JSON 数据，然后接收返回的 AI 回答，全靠这个库实现。
 
@@ -50,7 +50,9 @@ while True:
 
         #/learn 指令：保存已学内容
         if q.startswith("/learn"):
-            write(LEARN_RECORD_FILE,q[6:])
+            learn_time = datetime.now().strftime("%Y%m%d")
+            learn_content = f"{learn_time}:{q.split()[1]}"
+            write(LEARN_RECORD_FILE,learn_content)
             print("保存成功")
             continue
 
@@ -84,6 +86,35 @@ while True:
             else:
                 print("保存失败")
             continue
+        if q.startswith("/plan"):
+            print("生成中请稍后")
+            #读取json
+            learn_data = read(LEARN_RECORD_FILE)
+            if not learn_data:
+                print("暂无学习记录，无法生成")
+                continue
+            #拼接json
+            learn_memory = "\n".join(
+                f"{item}" for item in learn_data
+            )
+            user_content = LEARNING_PLAN.format(
+                learn_record = learn_memory
+            )
+            #将json传给ai
+            temp_messages = messages.copy()
+            temp_messages.append({"role":"user","content":user_content})
+            answer = ask_ai(temp_messages)
+            #文件路径
+            date_str = datetime.now().strftime("%Y%m%d")
+            plan_filename = f"{date_str}_学习计划.md"
+            plan_path = os.path.join(PLAN_DIR,plan_filename)
+            #文件内容
+            learning_plan = "日期：" + date_str + "\n" + "---" + "\n" + answer
+            #生成文件
+            if save_text_file(plan_path,learning_plan):
+                print("学习计划保存成功")
+            continue
+
 
         messages.append({"role" : "user","content" : q})#把用户的问题加到messages列表里
         answer = ask_ai(messages)#上述问题的回答
