@@ -1,12 +1,13 @@
 """
-ai_chat.py — AI 对话主程序，基于 LearningTool 实现
+ai_chat.py — AI 对话主程序
 
-通过 /learn、/progress、/plan 命令与 LearningTool 交互，
-普通对话直接调用 tool.ask_ai()。
+普通对话由 LearningTool.ask_ai() 处理，
+工具类请求由 DecisionMaker 自动路由到对应方法。
 """
 
 from prompt import MODE_PROMPTS, MODE
 from tools.learning_tool import tool
+from decision import maker
 
 
 def main():
@@ -35,7 +36,7 @@ def main():
             if q == "back":
                 break
 
-            # ── /learn：保存学习记录 ──
+            # ── 优先匹配硬编码命令 ────────────────────
             if q.startswith("/learn"):
                 parts = q.split(maxsplit=1)
                 if len(parts) < 2:
@@ -45,7 +46,6 @@ def main():
                 print("保存成功")
                 continue
 
-            # ── /progress：生成学习日报 ──
             if q.startswith("/progress"):
                 records = tool.get_records()
                 if not records:
@@ -53,15 +53,22 @@ def main():
                     continue
                 print("已累计学习：")
                 for r in records:
-                    print(f"- {r}")
+                    print(f"  - {r}")
                 print("将为您生成学习日报")
                 tool.generate_progress(extra_system_prompt=system_prompt)
                 continue
 
-            # ── /plan：生成学习计划 ──
             if q.startswith("/plan"):
                 print("生成中请稍后")
                 tool.generate_plan(extra_system_prompt=system_prompt)
+                continue
+
+            # ── 自然语言：让决策器判断是否调用工具 ──
+            decision = maker.tool_router(q, system_prompt)
+            result = maker.execute(decision, system_prompt)
+
+            if result is not None:
+                print(result)
                 continue
 
             # ── 普通对话 ──
