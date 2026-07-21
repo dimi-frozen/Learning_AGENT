@@ -7,10 +7,10 @@ LearningTool — 学习记录与规划工具
 
 import json
 import os
-import requests
 from datetime import datetime
 from config import API_KEY, BASE_URL, MODEL_NAME, LEARN_RECORD_FILE, REPORT_DIR, PLAN_DIR
 from prompt import DAILY_PATH, LEARNING_PLAN
+from tools.ai_utils import ask_ai
 
 
 class LearningTool:
@@ -53,16 +53,7 @@ class LearningTool:
 
     def ask_ai(self, messages):
         """调用大模型 API 并返回回答文本"""
-        headers = {
-            "Authorization": f"Bearer {API_KEY}",
-            "Content-Type": "application/json",
-        }
-        payload = {
-            "model": MODEL_NAME,
-            "messages": messages,
-        }
-        resp = requests.post(BASE_URL, json=payload, headers=headers)
-        return resp.json()["choices"][0]["message"]["content"]
+        return ask_ai(messages)
 
     # ── 公开 Tool 接口 ────────────────────────────────────────
 

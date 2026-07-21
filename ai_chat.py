@@ -8,6 +8,7 @@ ai_chat.py — AI 对话主程序
 from prompt import MODE_PROMPTS, MODE
 from tools.learning_tool import tool
 from decision import maker
+from tools.memory_tool import memory
 
 
 def main():
@@ -23,9 +24,14 @@ def main():
             continue
 
         system_prompt = mode_prompts[mode]
+
+        # 加载历史记忆（只有 user/assistant 消息，不含 system prompt）
+        history = memory.load()
+        if history:
+            print(f"已加载 {len(history)} 条历史对话记忆")
         messages = [
             {"role": "system", "content": system_prompt}
-        ]
+        ] + history
         print(f"\n已进入模式{mode}，输入 back 返回模式选择，输入 exit 退出")
 
         while True:
@@ -76,6 +82,8 @@ def main():
             answer = tool.ask_ai(messages)
             print(f"\nAI回复：{answer}")
             messages.append({"role": "assistant", "content": answer})
+            # 保存到记忆（去掉 system prompt，只存 user/assistant 消息）
+            memory.save(messages[1:])
 
 
 if __name__ == "__main__":

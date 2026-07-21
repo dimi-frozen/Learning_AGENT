@@ -67,6 +67,7 @@ class DecisionMaker:
             str | None: 执行结果文案，None 表示走普通对话
         """
         from tools.learning_tool import tool
+        from tools.file_tool import file_tool
 
         tool_name = decision.get("tool", "chat")
         params = decision.get("params", {})
@@ -79,6 +80,10 @@ class DecisionMaker:
             return self._do_progress(tool, system_prompt)
         if tool_name == "generate_plan":
             return self._do_plan(tool, system_prompt)
+        if tool_name == "file_read":
+            return self._do_file_read(file_tool, params)
+        if tool_name == "file_analyze":
+            return self._do_file_analyze(file_tool, params)
         # chat / 未知 → 普通对话
         return None
 
@@ -116,6 +121,24 @@ class DecisionMaker:
         print("正在生成学习计划…")
         result = tool.generate_plan(extra_system_prompt=system_prompt)
         return "学习计划已生成并保存！" if result else "生成计划失败"
+
+    # ── 文件工具 ─────────────────────────────────────
+
+    def _do_file_read(self, file_tool, params):
+        file_path = params.get("file_path", "")
+        if not file_path:
+            return "请提供文件路径"
+        print(f"正在读取文件：{file_path}")
+        content = file_tool.read(file_path)
+        return content
+
+    def _do_file_analyze(self, file_tool, params):
+        file_path = params.get("file_path", "")
+        instruction = params.get("instruction", "")
+        if not file_path:
+            return "请提供文件路径"
+        result = file_tool.analyze(file_path, instruction)
+        return result
 
 
 # 全局单例
