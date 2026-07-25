@@ -10,9 +10,12 @@ config.py
 
 # 本地运行数据
 learn.json
+chat_memory.json\
 chat_memory.json
+function_call_test.py
 
 # 输出的文件
 reports
 plan
+analysis
 .reasonix

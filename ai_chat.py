@@ -1,13 +1,13 @@
 """
 ai_chat.py — AI 对话主程序
 
-普通对话由 LearningTool.ask_ai() 处理，
-工具类请求由 DecisionMaker 自动路由到对应方法。
+硬编码命令（/learn /progress /plan）直接执行，
+自然语言由 fc_router 的 function calling 自动路由到对应工具。
 """
 
 from prompt import MODE_PROMPTS, MODE
 from tools.learning_tool import tool
-from decision import maker
+from fc_router import chat_with_tools
 from tools.memory_tool import memory
 
 
@@ -69,19 +69,10 @@ def main():
                 tool.generate_plan(extra_system_prompt=system_prompt)
                 continue
 
-            # ── 自然语言：让决策器判断是否调用工具 ──
-            decision = maker.tool_router(q, system_prompt)
-            result = maker.execute(decision, system_prompt)
-
-            if result is not None:
-                print(result)
-                continue
-
-            # ── 普通对话 ──
+            # ── 自然语言：function calling 自动路由 ──
             messages.append({"role": "user", "content": q})
-            answer = tool.ask_ai(messages)
+            answer = chat_with_tools(messages, system_prompt)
             print(f"\nAI回复：{answer}")
-            messages.append({"role": "assistant", "content": answer})
             # 保存到记忆（去掉 system prompt，只存 user/assistant 消息）
             memory.save(messages[1:])
 
