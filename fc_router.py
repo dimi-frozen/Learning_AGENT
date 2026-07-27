@@ -12,38 +12,35 @@ fc_router.py — Function Calling 工具路由
 
 import json
 from tools.ai_utils import ask_ai_with_tools
+from pydantic import BaseModel,Field
+
+class SaveRecordInput(BaseModel):
+    """保存一条学习记录。当用户说学了/学会了/掌握了某个知识点时调用。"""
+    model_config = {"title": "save_record"}
+    content: str = Field(description="学习内容描述")
+class GetRecordsInput(BaseModel):
+    """查看所有学习记录。当用户想查看学过什么/有哪些记录时调用。"""
+    model_config = {"title": "get_records"}
+    pass
+
+# 自动生成 OpenAI 格式的 tools 列表
+def build_tool_schema(model_cls):
+    schema = model_cls.model_json_schema()
+    return {
+        "type": "function",
+        "function": {
+            "name": schema["title"],
+            "description": schema.get("description", ""),
+            "parameters": schema,
+        }
+    }
+
 
 
 # ── 工具定义（OpenAI function calling 格式） ──────────────────
 TOOLS = [
-    {
-        "type": "function",
-        "function": {
-            "name": "save_record",
-            "description": "保存一条学习记录。当用户说学了/学会了/掌握了某个知识点时调用。",
-            "parameters": {
-                "type": "object",
-                "properties": {
-                    "content": {
-                        "type": "string",
-                        "description": "学习的内容描述"
-                    }
-                },
-                "required": ["content"]
-            }
-        }
-    },
-    {
-        "type": "function",
-        "function": {
-            "name": "get_records",
-            "description": "查看所有学习记录。当用户想查看学过什么/有哪些记录时调用。",
-            "parameters": {
-                "type": "object",
-                "properties": {}
-            }
-        }
-    },
+    build_tool_schema(SaveRecordInput),
+    build_tool_schema(GetRecordsInput),
     {
         "type": "function",
         "function": {
