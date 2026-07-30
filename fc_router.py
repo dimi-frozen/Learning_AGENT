@@ -18,11 +18,26 @@ class SaveRecordInput(BaseModel):
     """保存一条学习记录。当用户说学了/学会了/掌握了某个知识点时调用。"""
     model_config = {"title": "save_record"}
     content: str = Field(description="学习内容描述")
+    
 class GetRecordsInput(BaseModel):
     """查看所有学习记录。当用户想查看学过什么/有哪些记录时调用。"""
     model_config = {"title": "get_records"}
     pass
 
+class GenerateProgressInput(BaseModel):
+    """生成学习日报。当用户要求生成日报/学习进度/学习报告时调用。"""
+    model_config = {"title": "generate_progress"}
+    extra_system_prompt: str = Field(description="额外的系统提示，用于生成日报")
+
+class FileReadInput(BaseModel):
+    """读取文件内容。当用户说读取/查看/打开某个文件时调用。"""
+    model_config = {"title": "file_read"}
+    file_path: str = Field(description="文件的完整路径")
+
+class FileAnalyzeInput(BaseModel):
+    """分析文件内容并保存结果。当用户要求分析/检查/审查/评估文件时调用。"""
+    model_config = {"title": "file_analyze"}
+    
 # 自动生成 OpenAI 格式的 tools 列表
 def build_tool_schema(model_cls):
     schema = model_cls.model_json_schema()
@@ -41,66 +56,9 @@ def build_tool_schema(model_cls):
 TOOLS = [
     build_tool_schema(SaveRecordInput),
     build_tool_schema(GetRecordsInput),
-    {
-        "type": "function",
-        "function": {
-            "name": "generate_progress",
-            "description": "生成学习日报，分析学习进度并给出建议。当用户要求生成日报/学习进度/学习报告时调用。",
-            "parameters": {
-                "type": "object",
-                "properties": {}
-            }
-        }
-    },
-    {
-        "type": "function",
-        "function": {
-            "name": "generate_plan",
-            "description": "生成学习计划，规划未来学习路线。当用户要求制定计划/规划学习时调用。",
-            "parameters": {
-                "type": "object",
-                "properties": {}
-            }
-        }
-    },
-    {
-        "type": "function",
-        "function": {
-            "name": "file_read",
-            "description": "读取文件内容。当用户说读取/查看/打开某个文件时调用。",
-            "parameters": {
-                "type": "object",
-                "properties": {
-                    "file_path": {
-                        "type": "string",
-                        "description": "文件的完整路径"
-                    }
-                },
-                "required": ["file_path"]
-            }
-        }
-    },
-    {
-        "type": "function",
-        "function": {
-            "name": "file_analyze",
-            "description": "分析文件内容并保存结果。当用户要求分析/检查/审查/评估文件时调用。",
-            "parameters": {
-                "type": "object",
-                "properties": {
-                    "file_path": {
-                        "type": "string",
-                        "description": "文件的完整路径"
-                    },
-                    "instruction": {
-                        "type": "string",
-                        "description": "分析要求，如'检查语法错误'、'优化代码结构'"
-                    }
-                },
-                "required": ["file_path"]
-            }
-        }
-    },
+    build_tool_schema(GenerateProgressInput),
+    build_tool_schema(FileReadInput),
+    build_tool_schema(FileAnalyzeInput),
 ]
 
 
