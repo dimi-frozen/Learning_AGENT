@@ -14,6 +14,7 @@ import json
 from tools.ai_utils import ask_ai_with_tools
 from pydantic import BaseModel,Field
 
+# 工具输入参数定义  pydantic
 class SaveRecordInput(BaseModel):
     """保存一条学习记录。当用户说学了/学会了/掌握了某个知识点时调用。"""
     model_config = {"title": "save_record"}
@@ -152,37 +153,32 @@ def chat_with_tools(messages, system_prompt=None):
     Returns:
         str: AI 的最终回复文本
     """
-    # 第一次调用：让模型决定是否使用工具
-    response = ask_ai_with_tools(messages, tools=TOOLS)
+    while True:
+        # 第一次调用：让模型决定是否使用工具
+        response = ask_ai_with_tools(messages, tools=TOOLS)
 
-    # 没有工具调用 → 普通回复
-    if not response.get("tool_calls"):
-        content = response.get("content", "")
-        messages.append({"role": "assistant", "content": content})
-        return content
+        # 没有工具调用 → 普通回复
+        if not response.get("tool_calls"):
+            content = response.get("content", "")
+            messages.append({"role": "assistant", "content": content})
+            return content
 
-    # ── 有工具调用 → 执行并回传结果 ──
-    messages.append(response)  # 把 assistant 的 tool_calls 消息加入历史
+        # ── 有工具调用 → 执行并回传结果 ──
+        messages.append(response)  # 把 assistant 的 tool_calls 消息加入历史
 
-    for tool_call in response["tool_calls"]:
-        func_name = tool_call["function"]["name"]
-        func_args = json.loads(tool_call["function"]["arguments"])
+        for tool_call in response["tool_calls"]:
+            func_name = tool_call["function"]["name"]
+            func_args = json.loads(tool_call["function"]["arguments"])
 
-        handler = TOOL_HANDLERS.get(func_name)
-        if handler:
-            result = handler(func_args, system_prompt)
-        else:
-            result = f"未知工具：{func_name}"
+            handler = TOOL_HANDLERS.get(func_name)
+            if handler:
+                result = handler(func_args, system_prompt)
+            else:
+                result = f"未知工具：{func_name}"
 
-        # 把工具执行结果加入 messages（role="tool"）
-        messages.append({
-            "role": "tool",
-            "tool_call_id": tool_call["id"],
-            "content": result,
-        })
-
-    # 第二次调用：让模型基于工具结果生成最终回复
-    final_response = ask_ai_with_tools(messages)
-    content = final_response.get("content", "")
-    messages.append({"role": "assistant", "content": content})
-    return content
+            # 把工具执行结果加入 messages（role="tool"）
+            messages.append({
+                "role": "tool",
+                "tool_call_id": tool_call["id"],
+                "content": result,
+            })
