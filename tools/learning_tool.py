@@ -6,11 +6,14 @@ LearningTool — 学习记录与规划工具
 """
 
 import json
+import logging
 import os
 from datetime import datetime
 from config import API_KEY, BASE_URL, MODEL_NAME, LEARN_RECORD_FILE, REPORT_DIR, PLAN_DIR
 from prompt import DAILY_PATH, LEARNING_PLAN
 from tools.ai_utils import ask_ai
+
+logger = logging.getLogger(__name__)
 
 
 class LearningTool:
@@ -44,8 +47,10 @@ class LearningTool:
         try:
             with open(file_path, "w", encoding="utf-8") as f:
                 f.write(content)
+            logger.debug(f"文件写入成功：{file_path}")
             return True
         except Exception as e:
+            logger.error(f"文件写入失败：{file_path}，错误：{e}")
             print(f"文件写入失败：{e}")
             return False
 
@@ -64,8 +69,11 @@ class LearningTool:
             list[dict]: 每条记录含 datetime 和 content
         """
         if not os.path.exists(self.record_file):
+            logger.debug("学习记录文件不存在，返回空列表")
             return []
-        return self._read_json(self.record_file)
+        records = self._read_json(self.record_file)
+        logger.debug(f"读取学习记录，共 {len(records)} 条")
+        return records
 
     def save_record(self, content):
         """保存一条学习记录（自动添加当前日期）
@@ -81,6 +89,7 @@ class LearningTool:
             "content": content,
         }
         self._write_json(self.record_file, record)
+        logger.info(f"保存学习记录：{content[:50]}...")
         return record
 
     def generate_progress(self, extra_system_prompt=None):
@@ -94,6 +103,7 @@ class LearningTool:
         """
         records = self.get_records()
         if not records:
+            logger.warning("尝试生成日报但无学习记录")
             print("暂无学习记录，无法生成日报")
             return None
 
@@ -105,6 +115,7 @@ class LearningTool:
             messages.append({"role": "system", "content": extra_system_prompt})
         messages.append({"role": "user", "content": user_content})
 
+        logger.info("调用AI生成学习日报")
         answer = self.ask_ai(messages)
 
         date_str = datetime.now().strftime("%Y%m%d")
@@ -113,8 +124,10 @@ class LearningTool:
         full_content = f"日期：{date_str}\n---\n{answer}"
 
         if self._save_text(filepath, full_content):
+            logger.info(f"学习日报保存成功：{filepath}")
             print("学习日报保存成功！")
         else:
+            logger.error("学习日报保存失败")
             print("日报保存失败")
 
         return full_content
@@ -130,6 +143,7 @@ class LearningTool:
         """
         records = self.get_records()
         if not records:
+            logger.warning("尝试生成计划但无学习记录")
             print("暂无学习记录，无法生成计划")
             return None
 
@@ -141,6 +155,7 @@ class LearningTool:
             messages.append({"role": "system", "content": extra_system_prompt})
         messages.append({"role": "user", "content": user_content})
 
+        logger.info("调用AI生成学习计划")
         answer = self.ask_ai(messages)
 
         date_str = datetime.now().strftime("%Y%m%d")
@@ -149,8 +164,10 @@ class LearningTool:
         full_content = f"日期：{date_str}\n---\n{answer}"
 
         if self._save_text(filepath, full_content):
+            logger.info(f"学习计划保存成功：{filepath}")
             print("学习计划保存成功！")
         else:
+            logger.error("学习计划保存失败")
             print("计划保存失败")
 
         return full_content

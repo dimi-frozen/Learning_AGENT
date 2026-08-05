@@ -6,7 +6,10 @@ memory_tool.py — 简单的对话记忆系统
 """
 
 import json
+import logging
 import os
+
+logger = logging.getLogger(__name__)
 
 CHAT_MEMORY_FILE = "chat_memory.json"
 MAX_HISTORY = 50  # 最多保留 50 条消息（约 25 轮对话）
@@ -24,18 +27,23 @@ class MemoryTool:
         trimmed = messages[-self.max_messages:] if len(messages) > self.max_messages else messages
         with open(self.file_path, "w", encoding="utf-8") as f:
             json.dump(trimmed, f, ensure_ascii=False, indent=2)
+        logger.debug(f"记忆保存成功，共 {len(trimmed)} 条消息")
 
     def load(self):
         """从文件加载历史消息"""
         if not os.path.exists(self.file_path):
+            logger.debug("记忆文件不存在，返回空列表")
             return []
         with open(self.file_path, "r", encoding="utf-8") as f:
-            return json.load(f)
+            messages = json.load(f)
+        logger.info(f"记忆加载成功，共 {len(messages)} 条消息")
+        return messages
 
     def clear(self):
         """清空记忆文件"""
         if os.path.exists(self.file_path):
             os.remove(self.file_path)
+            logger.info("记忆已清空")
             print("记忆已清空")
 
 

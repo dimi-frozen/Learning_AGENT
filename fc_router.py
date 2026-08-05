@@ -11,8 +11,11 @@ fc_router.py — Function Calling 工具路由
 """
 
 import json
+import logging
 from tools.ai_utils import ask_ai_with_tools
 from pydantic import BaseModel,Field
+
+logger = logging.getLogger(__name__)
 
 # 工具输入参数定义  pydantic
 class SaveRecordInput(BaseModel):
@@ -92,7 +95,9 @@ def _handle_generate_progress(args, system_prompt=None):
     for r in records:
         print(f"  - {r['datetime']}  {r['content']}")
     print("正在生成学习日报…")
+    logger.info("开始生成学习日报")
     result = tool.generate_progress(extra_system_prompt=system_prompt)
+    logger.info("学习日报生成完成" if result else "学习日报生成失败")
     return "学习日报已生成并保存！" if result else "生成日报失败"
 
 
@@ -102,7 +107,9 @@ def _handle_generate_plan(args, system_prompt=None):
     if not records:
         return "暂无学习记录，无法生成计划"
     print("正在生成学习计划…")
+    logger.info("开始生成学习计划")
     result = tool.generate_plan(extra_system_prompt=system_prompt)
+    logger.info("学习计划生成完成" if result else "学习计划生成失败")
     return "学习计划已生成并保存！" if result else "生成计划失败"
 
 
@@ -111,6 +118,7 @@ def _handle_file_read(args, system_prompt=None):
     file_path = args.get("file_path", "")
     if not file_path:
         return "请提供文件路径"
+    logger.info(f"读取文件：{file_path}")
     print(f"正在读取文件：{file_path}")
     return file_tool.read(file_path)
 
@@ -121,6 +129,7 @@ def _handle_file_analyze(args, system_prompt=None):
     instruction = args.get("instruction", "")
     if not file_path:
         return "请提供文件路径"
+    logger.info(f"分析文件：{file_path}，指令：{instruction}")
     return file_tool.analyze(file_path, instruction)
 
 
@@ -161,20 +170,25 @@ def chat_with_tools(messages, system_prompt=None):
         if not response.get("tool_calls"):
             content = response.get("content", "")
             messages.append({"role": "assistant", "content": content})
+            logger.debug("AI返回普通回复，无工具调用")
             return content
 
         # ── 有工具调用 → 执行并回传结果 ──
+        logger.info(f"AI请求调用 {len(response['tool_calls'])} 个工具")
         messages.append(response)  # 把 assistant 的 tool_calls 消息加入历史
 
         for tool_call in response["tool_calls"]:
             func_name = tool_call["function"]["name"]
             func_args = json.loads(tool_call["function"]["arguments"])
+            logger.info(f"执行工具：{func_name}，参数：{func_args}")
 
             handler = TOOL_HANDLERS.get(func_name)
             if handler:
                 result = handler(func_args, system_prompt)
+                logger.debug(f"工具 {func_name} 执行完成，结果长度：{len(result)}")
             else:
                 result = f"未知工具：{func_name}"
+                logger.warning(f"未知工具被调用：{func_name}")
 
             # 把工具执行结果加入 messages（role="tool"）
             messages.append({
