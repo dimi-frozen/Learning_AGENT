@@ -53,44 +53,51 @@ def main():
                 logger.info("返回模式选择")
                 break
 
-            # ── 优先匹配硬编码命令 ────────────────────
-            if q.startswith("/learn"):
-                parts = q.split(maxsplit=1)
-                if len(parts) < 2:
-                    print("请输入要保存的内容，例如：/learn 内容")
+            try:
+                # ── 优先匹配硬编码命令 ────────────────────
+                if q.startswith("/learn"):
+                    parts = q.split(maxsplit=1)
+                    if len(parts) < 2:
+                        print("请输入要保存的内容，例如：/learn 内容")
+                        continue
+                    result = tool.save_record(parts[1])
+                    if result:
+                        logger.info(f"保存学习记录：{parts[1]}")
+                        print("保存成功")
+                    else:
+                        print("保存失败，请检查日志")
                     continue
-                tool.save_record(parts[1])
-                logger.info(f"保存学习记录：{parts[1]}")
-                print("保存成功")
-                continue
 
-            if q.startswith("/progress"):
-                records = tool.get_records()
-                if not records:
-                    print("暂无学习记录，无法生成")
+                if q.startswith("/progress"):
+                    records = tool.get_records()
+                    if not records:
+                        print("暂无学习记录，无法生成")
+                        continue
+                    print("已累计学习：")
+                    for r in records:
+                        print(f"  - {r}")
+                    print("将为您生成学习日报")
+                    logger.info("开始生成学习日报")
+                    tool.generate_progress(extra_system_prompt=system_prompt)
                     continue
-                print("已累计学习：")
-                for r in records:
-                    print(f"  - {r}")
-                print("将为您生成学习日报")
-                logger.info("开始生成学习日报")
-                tool.generate_progress(extra_system_prompt=system_prompt)
-                continue
 
-            if q.startswith("/plan"):
-                print("生成中请稍后")
-                logger.info("开始生成学习计划")
-                tool.generate_plan(extra_system_prompt=system_prompt)
-                continue
+                if q.startswith("/plan"):
+                    print("生成中请稍后")
+                    logger.info("开始生成学习计划")
+                    tool.generate_plan(extra_system_prompt=system_prompt)
+                    continue
 
-            # ── 自然语言：function calling 自动路由 ──
-            messages.append({"role": "user", "content": q})
-            logger.debug(f"用户输入：{q}")
-            answer = chat_with_tools(messages, system_prompt)
-            logger.info(f"AI回复完成，长度：{len(answer)}")
-            print(f"\nAI回复：{answer}")
-            # 保存到记忆（去掉 system prompt，只存 user/assistant 消息）
-            memory.save(messages[1:])
+                # ── 自然语言：function calling 自动路由 ──
+                messages.append({"role": "user", "content": q})
+                logger.debug(f"用户输入：{q}")
+                answer = chat_with_tools(messages, system_prompt)
+                logger.info(f"AI回复完成，长度：{len(answer)}")
+                print(f"\nAI回复：{answer}")
+                # 保存到记忆（去掉 system prompt，只存 user/assistant 消息）
+                memory.save(messages[1:])
+            except Exception as e:
+                logger.error(f"命令执行异常：{e}", exc_info=True)
+                print(f"操作失败：{e}")
 
 
 if __name__ == "__main__":

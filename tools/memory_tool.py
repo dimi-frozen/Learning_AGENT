@@ -24,27 +24,41 @@ class MemoryTool:
 
     def save(self, messages):
         """保存消息列表到文件，只保留最近 max_messages 条"""
-        trimmed = messages[-self.max_messages:] if len(messages) > self.max_messages else messages
-        with open(self.file_path, "w", encoding="utf-8") as f:
-            json.dump(trimmed, f, ensure_ascii=False, indent=2)
-        logger.debug(f"记忆保存成功，共 {len(trimmed)} 条消息")
+        try:
+            trimmed = messages[-self.max_messages:] if len(messages) > self.max_messages else messages
+            with open(self.file_path, "w", encoding="utf-8") as f:
+                json.dump(trimmed, f, ensure_ascii=False, indent=2)
+            logger.debug(f"记忆保存成功，共 {len(trimmed)} 条消息")
+        except OSError as e:
+            logger.error(f"记忆保存失败：{e}")
 
     def load(self):
         """从文件加载历史消息"""
         if not os.path.exists(self.file_path):
             logger.debug("记忆文件不存在，返回空列表")
             return []
-        with open(self.file_path, "r", encoding="utf-8") as f:
-            messages = json.load(f)
-        logger.info(f"记忆加载成功，共 {len(messages)} 条消息")
-        return messages
+        try:
+            with open(self.file_path, "r", encoding="utf-8") as f:
+                messages = json.load(f)
+            logger.info(f"记忆加载成功，共 {len(messages)} 条消息")
+            return messages
+        except json.JSONDecodeError as e:
+            logger.error(f"记忆文件损坏：{e}")
+            return []
+        except OSError as e:
+            logger.error(f"记忆文件读取失败：{e}")
+            return []
 
     def clear(self):
         """清空记忆文件"""
         if os.path.exists(self.file_path):
-            os.remove(self.file_path)
-            logger.info("记忆已清空")
-            print("记忆已清空")
+            try:
+                os.remove(self.file_path)
+                logger.info("记忆已清空")
+                print("记忆已清空")
+            except OSError as e:
+                logger.error(f"清空记忆失败失败：{e}")
+                print(f"清空记忆失败：{e}")
 
 
 # 全局单例

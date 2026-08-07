@@ -164,7 +164,11 @@ def chat_with_tools(messages, system_prompt=None):
     """
     while True:
         # 第一次调用：让模型决定是否使用工具
-        response = ask_ai_with_tools(messages, tools=TOOLS)
+        try:
+            response = ask_ai_with_tools(messages, tools=TOOLS)
+        except Exception as e:
+            logger.error(f"API调用异常：{e}")
+            return f"AI服务暂时不可用，请稍后重试。（错误：{e}）"
 
         # 没有工具调用 → 普通回复
         if not response.get("tool_calls"):
@@ -179,13 +183,31 @@ def chat_with_tools(messages, system_prompt=None):
 
         for tool_call in response["tool_calls"]:
             func_name = tool_call["function"]["name"]
-            func_args = json.loads(tool_call["function"]["arguments"])
+            
+            # 解析工具参数
+            try:
+                func_args = json.loads(tool_call["function"]["arguments"])
+            except json.JSONDecodeError as e:
+                logger.error(f"工具参数解析失败：{func_name}，错误：{e}")
+                func_args = {}
+                result = f"工具参数格式错误，无法执行：{func_name}"
+                messages.append({
+                    "role": "tool",
+                    "tool_call_id": tool_call["id"],
+                    "content": result,
+                })
+                continue
+            
             logger.info(f"执行工具：{func_name}，参数：{func_args}")
 
             handler = TOOL_HANDLERS.get(func_name)
             if handler:
-                result = handler(func_args, system_prompt)
-                logger.debug(f"工具 {func_name} 执行完成，结果长度：{len(result)}")
+                try:
+                    result = handler(func_args, system_prompt)
+                    logger.debug(f"工具 {func_name} 执行完成，结果长度：{len(result)}")
+                except Exception as e:
+                    logger.error(f"工具执行异常：{func_name}，错误：{e}")
+                    result = f"工具执行失败：{e}"
             else:
                 result = f"未知工具：{func_name}"
                 logger.warning(f"未知工具被调用：{func_name}")

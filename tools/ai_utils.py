@@ -26,11 +26,15 @@ def ask_ai(messages):
     try:
         resp = requests.post(BASE_URL, json=payload, headers=headers)
         resp.raise_for_status()
-        content = resp.json()["choices"][0]["message"]["content"] 
+        data = resp.json()
+        content = data["choices"][0]["message"]["content"]
         logger.info(f"API调用成功，回复长度：{len(content)}")
         return content
     except requests.exceptions.RequestException as e:
-        logger.error(f"API调用失败：{e}")
+        logger.error(f"API网络请求失败：{e}")
+        raise
+    except (ValueError, KeyError, IndexError) as e:
+        logger.error(f"API响应解析失败：{e}，响应内容：{resp.text[:200]}")
         raise
 
 
@@ -61,10 +65,14 @@ def ask_ai_with_tools(messages, tools=None, tool_choice="auto"):
     try:
         resp = requests.post(BASE_URL, json=payload, headers=headers)
         resp.raise_for_status()
-        message = resp.json()["choices"][0]["message"]
+        data = resp.json()
+        message = data["choices"][0]["message"]
         has_tool_calls = "tool_calls" in message
         logger.info(f"API调用成功，{'包含工具调用' if has_tool_calls else '普通回复'}")
         return message
     except requests.exceptions.RequestException as e:
-        logger.error(f"API调用失败：{e}")
+        logger.error(f"API网络请求失败：{e}")
+        raise
+    except (ValueError, KeyError, IndexError) as e:
+        logger.error(f"API响应解析失败：{e}，响应内容：{resp.text[:200]}")
         raise

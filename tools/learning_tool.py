@@ -28,19 +28,39 @@ class LearningTool:
 
     def _read_json(self, file_path):
         """读取 JSON 文件并返回完整列表"""
-        with open(file_path, "r", encoding="utf-8") as f:
-            return json.load(f)
+        try:
+            with open(file_path, "r", encoding="utf-8") as f:
+                return json.load(f)
+        except json.JSONDecodeError as e:
+            logger.error(f"JSON文件损坏：{file_path}，错误：{e}")
+            return []
+        except OSError as e:
+            logger.error(f"读取JSON文件失败：{file_path}，错误：{e}")
+            return []
 
     def _write_json(self, file_path, record):
-        """向 JSON 文件追加一条记录"""
-        if os.path.exists(file_path):
-            with open(file_path, "r", encoding="utf-8") as f:
-                data = json.load(f)
-        else:
-            data = []
-        data.append(record)
-        with open(file_path, "w", encoding="utf-8") as f:
-            json.dump(data, f, ensure_ascii=False, indent=2)
+        """向 JSON 文件追加一条记录
+        
+        Returns:
+            bool: 写入成功返回 True，失败返回 False
+        """
+        try:
+            if os.path.exists(file_path):
+                with open(file_path, "r", encoding="utf-8") as f:
+                    data = json.load(f)
+            else:
+                data = []
+            data.append(record)
+            with open(file_path, "w", encoding="utf-8") as f:
+                json.dump(data, f, ensure_ascii=False, indent=2)
+            logger.debug(f"JSON写入成功：{file_path}")
+            return True
+        except json.JSONDecodeError as e:
+            logger.error(f"JSON文件损坏，无法追加：{file_path}，错误：{e}")
+            return False
+        except OSError as e:
+            logger.error(f"写入JSON文件失败：{file_path}，错误：{e}")
+            return False
 
     def _save_text(self, file_path, content):
         """覆盖写入纯文本文件"""
@@ -82,13 +102,15 @@ class LearningTool:
             content: 学习内容描述
 
         Returns:
-            dict: 刚保存的记录 {"datetime": ..., "content": ...}
+            dict | None: 刚保存的记录，失败返回 None
         """
         record = {
             "datetime": datetime.now().strftime("%Y%m%d"),
             "content": content,
         }
-        self._write_json(self.record_file, record)
+        if not self._write_json(self.record_file, record):
+            logger.error(f"保存学习记录失败：{content[:50]}...")
+            return None
         logger.info(f"保存学习记录：{content[:50]}...")
         return record
 
@@ -116,7 +138,12 @@ class LearningTool:
         messages.append({"role": "user", "content": user_content})
 
         logger.info("调用AI生成学习日报")
-        answer = self.ask_ai(messages)
+        try:
+            answer = self.ask_ai(messages)
+        except Exception as e:
+            logger.error(f"AI生成日报失败：{e}")
+            print(f"生成日报失败：{e}")
+            return None
 
         date_str = datetime.now().strftime("%Y%m%d")
         filename = f"{date_str}_学习日报.md"
@@ -156,7 +183,12 @@ class LearningTool:
         messages.append({"role": "user", "content": user_content})
 
         logger.info("调用AI生成学习计划")
-        answer = self.ask_ai(messages)
+        try:
+            answer = self.ask_ai(messages)
+        except Exception as e:
+            logger.error(f"AI生成计划失败：{e}")
+            print(f"生成计划失败：{e}")
+            return None
 
         date_str = datetime.now().strftime("%Y%m%d")
         filename = f"{date_str}_学习计划.md"

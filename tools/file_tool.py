@@ -118,7 +118,11 @@ class FileTool:
         ]
         logger.info(f"开始分析文件：{file_path}")
         print("正在分析文件…")
-        analysis = ask_ai(messages)
+        try:
+            analysis = ask_ai(messages)
+        except Exception as e:
+            logger.error(f"AI分析失败：{e}")
+            return f"分析失败：{e}"
 
         # 3. 保存结果
         date_str = datetime.now().strftime("%Y%m%d")
