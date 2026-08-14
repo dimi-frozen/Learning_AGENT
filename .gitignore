@@ -23,3 +23,5 @@ analysis
 
 # 日志文件
 logs
+test_stream.py
+test1_stream.py

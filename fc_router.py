@@ -12,7 +12,8 @@ fc_router.py — Function Calling 工具路由
 
 import json
 import logging
-from tools.ai_utils import ask_ai_with_tools
+import sys
+from tools.ai_utils import ask_ai_with_tools_stream
 from pydantic import BaseModel,Field
 
 logger = logging.getLogger(__name__)
@@ -146,31 +147,45 @@ TOOL_HANDLERS = {
 
 # ── 核心：带 function calling 的对话 ─────────────────────────
 
-def chat_with_tools(messages, system_prompt=None):
-    """带 function calling 的对话
+def _default_on_content(text):
+    """默认的流式显示函数：直接打印到控制台"""
+    sys.stdout.write(text)
+    sys.stdout.flush()
 
-    1. 发送 messages + TOOLS 给 API
-    2. 如果 API 返回 tool_calls → 执行工具 → 结果放回 messages → 再次调 API
-    3. 如果 API 返回普通 content → 直接返回
+
+def chat_with_tools(messages, system_prompt=None, on_content=None):
+    """带 function calling 的流式对话
+
+    1. 发送 messages + TOOLS 给 API（stream 模式）
+    2. 回复内容一块一块到达，每收到一段文字就调用 on_content(text)
+    3. 如果收到 tool_calls → 执行工具 → 结果放回 messages → 再次调 API
+    4. 最终返回完整的回复文本
 
     注意：此函数会修改传入的 messages 列表（追加工具交互记录）
 
     Args:
         messages: 对话消息列表（会被就地修改）
         system_prompt: 当前模式的角色提示
+        on_content: 可选回调，每收到一段文字就调用 on_content(text)。
+            不传则默认直接打印到控制台
 
     Returns:
         str: AI 的最终回复文本
     """
+    if on_content is None:
+        on_content = _default_on_content
+
     while True:
-        # 第一次调用：让模型决定是否使用工具
+        # 第一次调用：让模型决定是否使用工具（流式）
         try:
-            response = ask_ai_with_tools(messages, tools=TOOLS)
+            response = ask_ai_with_tools_stream(
+                messages, tools=TOOLS, on_content=on_content
+            )
         except Exception as e:
             logger.error(f"API调用异常：{e}")
             return f"AI服务暂时不可用，请稍后重试。（错误：{e}）"
 
-        # 没有工具调用 → 普通回复
+        # 没有工具调用 → 普通回复（内容已通过 on_content 实时显示）
         if not response.get("tool_calls"):
             content = response.get("content", "")
             messages.append({"role": "assistant", "content": content})

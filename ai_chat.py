@@ -87,12 +87,26 @@ def main():
                     tool.generate_plan(extra_system_prompt=system_prompt)
                     continue
 
-                # ── 自然语言：function calling 自动路由 ──
+                # ── 自然语言：function calling 自动路由（流式） ──
                 messages.append({"role": "user", "content": q})
                 logger.debug(f"用户输入：{q}")
-                answer = chat_with_tools(messages, system_prompt)
+
+                # 流式显示：第一次收到内容块时打印"AI回复："前缀
+                prefix_state = {"first": True}
+                def on_content(text):
+                    if prefix_state["first"]:
+                        print("\nAI回复：", end="", flush=True)
+                        prefix_state["first"] = False
+                    print(text, end="", flush=True)
+
+                answer = chat_with_tools(messages, system_prompt, on_content=on_content)
                 logger.info(f"AI回复完成，长度：{len(answer)}")
-                print(f"\nAI回复：{answer}")
+                if prefix_state["first"]:
+                    # 全程没有流式内容（如 API 错误提示），正常打印
+                    print(f"\nAI回复：{answer}")
+                else:
+                    # 内容已实时显示，补一个换行
+                    print()
                 # 保存到记忆（去掉 system prompt，只存 user/assistant 消息）
                 memory.save(messages[1:])
             except Exception as e:
