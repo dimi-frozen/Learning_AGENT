@@ -18,6 +18,8 @@ from pydantic import BaseModel,Field
 
 logger = logging.getLogger(__name__)
 
+
+
 # 工具输入参数定义  pydantic
 class SaveRecordInput(BaseModel):
     """保存一条学习记录。当用户说学了/学会了/掌握了某个知识点时调用。"""
@@ -174,9 +176,12 @@ def chat_with_tools(messages, system_prompt=None, on_content=None):
     """
     if on_content is None:
         on_content = _default_on_content
-
-    while True:
-        # 第一次调用：让模型决定是否使用工具（流式）
+        
+        
+    # 工具调用轮数上限：防止模型反复请求工具导致无限循环
+    MAX_TOOL_ROUNDS = 5
+    for round_num in range(MAX_TOOL_ROUNDS):
+        # 第 round_num+1 次调用：让模型决定是否使用工具（流式）
         try:
             response = ask_ai_with_tools_stream(
                 messages, tools=TOOLS, on_content=on_content
@@ -233,3 +238,7 @@ def chat_with_tools(messages, system_prompt=None, on_content=None):
                 "tool_call_id": tool_call["id"],
                 "content": result,
             })
+
+    # 连续 MAX_TOOL_ROUNDS 轮都是工具调用，仍未得到最终回复 → 停止，避免死循环
+    logger.warning(f"工具调用轮数达到上限（{MAX_TOOL_ROUNDS}轮），已停止")
+    return "工具调用次数已达上限，请换个问法或简化请求后重试。"
