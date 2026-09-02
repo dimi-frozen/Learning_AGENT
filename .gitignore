@@ -11,9 +11,12 @@ config.py
 
 # 本地运行数据
 learn.json
-chat_memory.json\
 chat_memory.json
 function_call_test.py
+
+# RAG 本地环境和模型缓存
+rag_study/.venv/
+rag_study/models/
 
 # 输出的文件
 reports
